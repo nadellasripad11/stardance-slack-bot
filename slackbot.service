@@ -1,0 +1,23 @@
+# systemd unit for running the bot 24/7 on Hack Club Nest.
+# Copy to /etc/systemd/system/slackbot.service on the server, then:
+#   systemctl daemon-reload
+#   systemctl enable --now slackbot.service
+#   systemctl status slackbot.service
+# Edit WorkingDirectory to match where you cloned the repo, and confirm the
+# node path with `which node` (NodeSource installs put it at /usr/bin/node).
+
+[Unit]
+Description=Stardance Slack Bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Restart=always
+RestartSec=5
+WorkingDirectory=/root/stardance-slack-bot
+ExecStart=/usr/bin/node index.js
+
+[Install]
+WantedBy=multi-user.target

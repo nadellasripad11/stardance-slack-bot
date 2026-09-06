@@ -1,0 +1,27 @@
+{
+  "name": "stardance-slack-bot",
+  "version": "1.0.0",
+  "description": "A Hack Club Slack bot built for the Stardance 'Make a Slack Bot' mission. Responds to slash commands over Socket Mode.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "slack",
+    "bot",
+    "hackclub",
+    "stardance",
+    "bolt",
+    "socket-mode"
+  ],
+  "author": "nadellasripad11",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@slack/bolt": "^3.19.0",
+    "axios": "^1.7.7",
+    "dotenv": "^16.4.5"
+  }
+}
