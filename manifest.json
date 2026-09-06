@@ -10,12 +10,17 @@
       "always_online": true
     },
     "slash_commands": [
-      { "command": "/sripin-ping", "description": "Check bot latency", "should_escape": false },
+      { "command": "/sripin-ping", "description": "Latency and uptime", "should_escape": false },
       { "command": "/sripin-help", "description": "List available commands", "should_escape": false },
       { "command": "/sripin-catfact", "description": "Get a random cat fact", "should_escape": false },
       { "command": "/sripin-joke", "description": "Get a random joke", "should_escape": false },
+      { "command": "/sripin-quote", "description": "Get a random inspirational quote", "should_escape": false },
+      { "command": "/sripin-weather", "description": "Current weather for a place", "usage_hint": "<place>", "should_escape": false },
+      { "command": "/sripin-define", "description": "Dictionary definition of a word", "usage_hint": "<word>", "should_escape": false },
       { "command": "/sripin-8ball", "description": "Ask the magic 8-ball", "usage_hint": "[question]", "should_escape": false },
-      { "command": "/sripin-roll", "description": "Roll dice", "usage_hint": "[NdM, e.g. 2d6]", "should_escape": false }
+      { "command": "/sripin-roll", "description": "Roll dice", "usage_hint": "[NdM, e.g. 2d6]", "should_escape": false },
+      { "command": "/sripin-flip", "description": "Flip a coin", "should_escape": false },
+      { "command": "/sripin-choose", "description": "Pick one option at random", "usage_hint": "a, b, c", "should_escape": false }
     ]
   },
   "oauth_config": {

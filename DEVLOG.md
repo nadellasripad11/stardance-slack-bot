@@ -36,8 +36,21 @@
 - Bot now starts cleanly: `⚡️ bot is running!` → `Now connected to Slack`, and
   `http://localhost:3737` returns a JSON health payload.
 
+## 2026-09-06 — More commands + polish
+
+- Expanded to **11 commands**: added `/sripin-quote` (zenquotes + offline
+  fallback), `/sripin-weather` (wttr.in, no API key), `/sripin-define`
+  (dictionaryapi.dev), `/sripin-flip`, `/sripin-choose`.
+- Fun commands now reply `in_channel` so they're visible to everyone (better for
+  the demo); `ping`/`help` stay ephemeral.
+- Factored a `httpGet` helper with a shared timeout; command list is data-driven
+  so `help` and the health payload can't drift out of sync.
+- Restarted cleanly — had two bot instances connected at once for a bit (stale
+  process held the port); killed all and started one. `⚡️ bot is running! 11
+  commands` → `Now connected to Slack`.
+- Updated `manifest.json` with all 11 slash commands.
+
 ### Still to do
-- Re-sync `manifest.json` in the Slack dashboard so `/sripin-8ball` and
-  `/sripin-roll` register (the first four commands already work).
-- Test the slash commands live in `#bot-spam`.
-- Deploy to Nest and enable the systemd service for 24/7 uptime.
+- Re-sync `manifest.json` in the Slack dashboard (App Manifest → paste → Save) so
+  all 11 commands register.
+- Deploy to Nest with the systemd service — required for "live 24/7".

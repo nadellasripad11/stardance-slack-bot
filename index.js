@@ -19,8 +19,13 @@ function uptimeString() {
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  return [d && `${d}d`, h && `${h}h`, m && `${m}m`, `${sec}s`].filter(Boolean).join(" ");
+  return [d && `${d}d`, h && `${h}h`, m && `${m}m`, `${s % 60}s`].filter(Boolean).join(" ");
+}
+
+// Small wrapper so every API call has a timeout and a predictable failure.
+async function httpGet(url, opts = {}) {
+  const { data } = await axios.get(url, { timeout: 6000, ...opts });
+  return data;
 }
 
 const app = new App({
@@ -29,106 +34,171 @@ const app = new App({
   socketMode: true,
 });
 
+// Fun commands post publicly so they show up in the channel (nice for demos).
+// Utility commands (ping/help) stay ephemeral.
+const inChannel = (text) => ({ response_type: "in_channel", text });
+
 // ---------------------------------------------------------------------------
-// /<prefix>-ping  ->  reports acknowledge latency + how long the bot's been up
+// Utility
 // ---------------------------------------------------------------------------
 app.command(`/${PREFIX}-ping`, async ({ ack, respond }) => {
   const start = Date.now();
   await ack();
-  const latency = Date.now() - start;
-  await respond({ text: `:ping_pong: Pong! Latency: ${latency}ms · uptime: ${uptimeString()}` });
+  await respond({ text: `:ping_pong: Pong! Latency: ${Date.now() - start}ms · uptime: ${uptimeString()}` });
 });
 
-// ---------------------------------------------------------------------------
-// /<prefix>-help  ->  lists every command the bot knows
-// ---------------------------------------------------------------------------
+const COMMANDS = [
+  ["ping", "latency + uptime"],
+  ["help", "show this message"],
+  ["catfact", "a random cat fact"],
+  ["joke", "a random joke"],
+  ["quote", "a random inspirational quote"],
+  ["weather <place>", "current weather, e.g. `london`"],
+  ["define <word>", "dictionary definition"],
+  ["8ball <question>", "ask the magic 8-ball"],
+  ["roll [NdM]", "roll dice, e.g. `2d6`"],
+  ["flip", "flip a coin"],
+  ["choose a, b, c", "pick one at random"],
+];
+
 app.command(`/${PREFIX}-help`, async ({ ack, respond }) => {
   await ack();
   await respond({
     text: [
       "*Available commands:*",
-      `• \`/${PREFIX}-ping\` — latency + uptime`,
-      `• \`/${PREFIX}-help\` — show this message`,
-      `• \`/${PREFIX}-catfact\` — a random cat fact`,
-      `• \`/${PREFIX}-joke\` — a random joke`,
-      `• \`/${PREFIX}-8ball <question>\` — ask the magic 8-ball`,
-      `• \`/${PREFIX}-roll [NdM]\` — roll dice, e.g. \`2d6\` (default \`1d6\`)`,
+      ...COMMANDS.map(([c, d]) => `• \`/${PREFIX}-${c}\` — ${d}`),
     ].join("\n"),
   });
 });
 
 // ---------------------------------------------------------------------------
-// /<prefix>-catfact  ->  calls a public API and returns a cat fact
+// API-backed commands
 // ---------------------------------------------------------------------------
 app.command(`/${PREFIX}-catfact`, async ({ ack, respond }) => {
   await ack();
   try {
-    const { data } = await axios.get("https://catfact.ninja/fact", { timeout: 5000 });
-    await respond({ text: `:cat: *Cat fact:*\n${data.fact}` });
+    const data = await httpGet("https://catfact.ninja/fact");
+    await respond(inChannel(`:cat: *Cat fact:*\n${data.fact}`));
   } catch (err) {
     console.error("catfact failed:", err.message);
     await respond({ text: "Failed to fetch a cat fact. Try again in a moment." });
   }
 });
 
-// ---------------------------------------------------------------------------
-// /<prefix>-joke  ->  calls a public API and returns a joke
-// ---------------------------------------------------------------------------
 app.command(`/${PREFIX}-joke`, async ({ ack, respond }) => {
   await ack();
   try {
-    const { data } = await axios.get("https://official-joke-api.appspot.com/random_joke", {
-      timeout: 5000,
-    });
-    await respond({ text: `:laughing: ${data.setup}\n*${data.punchline}*` });
+    const data = await httpGet("https://official-joke-api.appspot.com/random_joke");
+    await respond(inChannel(`:laughing: ${data.setup}\n*${data.punchline}*`));
   } catch (err) {
     console.error("joke failed:", err.message);
     await respond({ text: "Failed to fetch a joke. Try again in a moment." });
   }
 });
 
+const FALLBACK_QUOTES = [
+  "The best way out is always through. — Robert Frost",
+  "Done is better than perfect.",
+  "Ship it. — every Hack Clubber, eventually",
+];
+app.command(`/${PREFIX}-quote`, async ({ ack, respond }) => {
+  await ack();
+  try {
+    const data = await httpGet("https://zenquotes.io/api/random");
+    const q = data[0];
+    await respond(inChannel(`:sparkles: “${q.q}” — *${q.a}*`));
+  } catch (err) {
+    console.error("quote failed:", err.message);
+    const q = FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
+    await respond(inChannel(`:sparkles: ${q}`));
+  }
+});
+
+app.command(`/${PREFIX}-weather`, async ({ command, ack, respond }) => {
+  await ack();
+  const place = (command.text || "").trim();
+  if (!place) {
+    await respond({ text: `Usage: \`/${PREFIX}-weather <place>\` — e.g. \`/${PREFIX}-weather Tokyo\`` });
+    return;
+  }
+  try {
+    // wttr.in needs no API key; format=3 => "London: ⛅️ +12°C"
+    const line = await httpGet(`https://wttr.in/${encodeURIComponent(place)}?format=3`, {
+      responseType: "text",
+      headers: { "User-Agent": "curl" },
+    });
+    await respond(inChannel(`:partly_sunny: ${String(line).trim()}`));
+  } catch (err) {
+    console.error("weather failed:", err.message);
+    await respond({ text: `Couldn't get weather for "${place}".` });
+  }
+});
+
+app.command(`/${PREFIX}-define`, async ({ command, ack, respond }) => {
+  await ack();
+  const word = (command.text || "").trim().split(/\s+/)[0];
+  if (!word) {
+    await respond({ text: `Usage: \`/${PREFIX}-define <word>\`` });
+    return;
+  }
+  try {
+    const data = await httpGet(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`
+    );
+    const meaning = data[0].meanings[0];
+    const def = meaning.definitions[0].definition;
+    await respond(inChannel(`:book: *${data[0].word}* _(${meaning.partOfSpeech})_\n${def}`));
+  } catch (err) {
+    console.error("define failed:", err.message);
+    await respond({ text: `No definition found for "${word}".` });
+  }
+});
+
 // ---------------------------------------------------------------------------
-// /<prefix>-8ball  ->  offline fun, always works (good for demos)
+// Offline fun (no network, never fails)
 // ---------------------------------------------------------------------------
 const EIGHT_BALL = [
-  "It is certain.",
-  "Without a doubt.",
-  "Yes, definitely.",
-  "Most likely.",
-  "Ask again later.",
-  "Cannot predict now.",
-  "Don't count on it.",
-  "My reply is no.",
-  "Very doubtful.",
-  "Outlook not so good.",
+  "It is certain.", "Without a doubt.", "Yes, definitely.", "Most likely.",
+  "Ask again later.", "Cannot predict now.", "Don't count on it.",
+  "My reply is no.", "Very doubtful.", "Outlook not so good.",
 ];
 app.command(`/${PREFIX}-8ball`, async ({ command, ack, respond }) => {
   await ack();
   const q = (command.text || "").trim();
-  const answer = EIGHT_BALL[Math.floor(Math.random() * EIGHT_BALL.length)];
-  await respond({
-    text: q ? `:8ball: *${q}*\n${answer}` : `:8ball: ${answer}`,
-  });
+  const a = EIGHT_BALL[Math.floor(Math.random() * EIGHT_BALL.length)];
+  await respond(inChannel(q ? `:8ball: *${q}*\n${a}` : `:8ball: ${a}`));
 });
 
-// ---------------------------------------------------------------------------
-// /<prefix>-roll  ->  dice roller, "NdM" (e.g. 2d6). Offline, always works.
-// ---------------------------------------------------------------------------
 app.command(`/${PREFIX}-roll`, async ({ command, ack, respond }) => {
   await ack();
   const spec = (command.text || "1d6").trim().toLowerCase();
-  const match = spec.match(/^(\d{1,2})?d(\d{1,3})$/);
-  if (!match) {
-    await respond({ text: `Usage: \`/${PREFIX}-roll 2d6\` (dice between 1d2 and 20d100)` });
+  const m = spec.match(/^(\d{1,2})?d(\d{1,3})$/);
+  if (!m) {
+    await respond({ text: `Usage: \`/${PREFIX}-roll 2d6\` (1d2 to 20d100)` });
     return;
   }
-  const count = Math.min(Math.max(parseInt(match[1] || "1", 10), 1), 20);
-  const sides = Math.min(Math.max(parseInt(match[2], 10), 2), 100);
+  const count = Math.min(Math.max(parseInt(m[1] || "1", 10), 1), 20);
+  const sides = Math.min(Math.max(parseInt(m[2], 10), 2), 100);
   const rolls = Array.from({ length: count }, () => 1 + Math.floor(Math.random() * sides));
-  const total = rolls.reduce((a, b) => a + b, 0);
-  await respond({
-    text: `:game_die: ${count}d${sides} → [${rolls.join(", ")}] = *${total}*`,
-  });
+  await respond(inChannel(`:game_die: ${count}d${sides} → [${rolls.join(", ")}] = *${rolls.reduce((a, b) => a + b, 0)}*`));
+});
+
+app.command(`/${PREFIX}-flip`, async ({ ack, respond }) => {
+  await ack();
+  await respond(inChannel(`:coin: ${Math.random() < 0.5 ? "Heads" : "Tails"}`));
+});
+
+app.command(`/${PREFIX}-choose`, async ({ command, ack, respond }) => {
+  await ack();
+  const options = (command.text || "")
+    .split(/,|\bor\b/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (options.length < 2) {
+    await respond({ text: `Usage: \`/${PREFIX}-choose pizza, tacos, sushi\`` });
+    return;
+  }
+  await respond(inChannel(`:thinking_face: I pick *${options[Math.floor(Math.random() * options.length)]}*`));
 });
 
 // ---------------------------------------------------------------------------
@@ -141,15 +211,13 @@ app.event("app_mention", async ({ event, say }) => {
   });
 });
 
-// Log Bolt-level errors instead of letting them bubble up and kill the process.
 app.error(async (error) => {
   console.error("Bolt error:", error);
 });
 
 // ---------------------------------------------------------------------------
-// Tiny HTTP status page so the deployment has a visitable URL ("demo URL").
-// Socket Mode itself needs no web server; this is only a health check, and a
-// failure here (e.g. port in use) must never take the bot down.
+// Tiny HTTP status page. Socket Mode needs no web server; this is only a health
+// check, and a failure here (e.g. port in use) must never take the bot down.
 // ---------------------------------------------------------------------------
 const PORT = Number(process.env.PORT) || 3000;
 const healthServer = http.createServer((req, res) => {
@@ -158,29 +226,20 @@ const healthServer = http.createServer((req, res) => {
     JSON.stringify({
       status: "ok",
       bot: "stardance-slack-bot",
-      commands: [
-        `/${PREFIX}-ping`,
-        `/${PREFIX}-help`,
-        `/${PREFIX}-catfact`,
-        `/${PREFIX}-joke`,
-        `/${PREFIX}-8ball`,
-        `/${PREFIX}-roll`,
-      ],
+      commands: COMMANDS.map(([c]) => `/${PREFIX}-${c.split(" ")[0]}`),
       uptime: uptimeString(),
     })
   );
 });
-healthServer.on("error", (err) => {
-  console.warn(`health check disabled: ${err.code || err.message}`);
-});
+healthServer.on("error", (err) => console.warn(`health check disabled: ${err.code || err.message}`));
 healthServer.listen(PORT, () => console.log(`health check on http://localhost:${PORT}`));
 
 // ---------------------------------------------------------------------------
-// Start the bot + shut down cleanly (matters for systemd on Nest)
+// Start + clean shutdown (matters for systemd on Nest)
 // ---------------------------------------------------------------------------
 (async () => {
   await app.start();
-  console.log(`⚡️ bot is running! commands prefixed with /${PREFIX}-`);
+  console.log(`⚡️ bot is running! ${COMMANDS.length} commands, prefixed with /${PREFIX}-`);
 })();
 
 for (const sig of ["SIGINT", "SIGTERM"]) {

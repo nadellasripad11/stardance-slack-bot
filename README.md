@@ -9,11 +9,18 @@ It listens for slash commands over **Socket Mode** (a WebSocket connection to Sl
 | --- | --- |
 | `/sripin-ping` | Replies with the bot's response latency and uptime |
 | `/sripin-help` | Lists every command |
-| `/sripin-catfact` | Fetches a random cat fact from `catfact.ninja` |
-| `/sripin-joke` | Fetches a random joke from `official-joke-api.appspot.com` |
-| `/sripin-8ball <question>` | Magic 8-ball answer (offline, always works) |
-| `/sripin-roll [NdM]` | Rolls dice, e.g. `/sripin-roll 2d6` (default `1d6`) |
+| `/sripin-catfact` | Random cat fact (`catfact.ninja`) |
+| `/sripin-joke` | Random joke (`official-joke-api.appspot.com`) |
+| `/sripin-quote` | Random inspirational quote (`zenquotes.io`, offline fallback) |
+| `/sripin-weather <place>` | Current weather (`wttr.in`, no API key) |
+| `/sripin-define <word>` | Dictionary definition (`dictionaryapi.dev`) |
+| `/sripin-8ball <question>` | Magic 8-ball answer (offline) |
+| `/sripin-roll [NdM]` | Roll dice, e.g. `/sripin-roll 2d6` (default `1d6`) |
+| `/sripin-flip` | Flip a coin (offline) |
+| `/sripin-choose a, b, c` | Pick one option at random (offline) |
 | `@mention` the bot | Replies with a friendly pointer to `/sripin-help` |
+
+Fun commands reply **in-channel** (visible to everyone); `ping`/`help` reply only to you.
 
 The bot also survives a busy port (the health check just disables itself), logs
 Bolt errors instead of crashing, and shuts down cleanly on `SIGINT`/`SIGTERM`
