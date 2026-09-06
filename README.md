@@ -7,11 +7,17 @@ It listens for slash commands over **Socket Mode** (a WebSocket connection to Sl
 
 | Command | What it does |
 | --- | --- |
-| `/sripin-ping` | Replies with the bot's response latency in milliseconds |
+| `/sripin-ping` | Replies with the bot's response latency and uptime |
 | `/sripin-help` | Lists every command |
 | `/sripin-catfact` | Fetches a random cat fact from `catfact.ninja` |
 | `/sripin-joke` | Fetches a random joke from `official-joke-api.appspot.com` |
+| `/sripin-8ball <question>` | Magic 8-ball answer (offline, always works) |
+| `/sripin-roll [NdM]` | Rolls dice, e.g. `/sripin-roll 2d6` (default `1d6`) |
 | `@mention` the bot | Replies with a friendly pointer to `/sripin-help` |
+
+The bot also survives a busy port (the health check just disables itself), logs
+Bolt errors instead of crashing, and shuts down cleanly on `SIGINT`/`SIGTERM`
+(so `systemctl restart` is graceful).
 
 > The `sripin-` prefix keeps these commands from colliding with other bots in the
 > Hack Club workspace. Change it by setting `COMMAND_PREFIX` in `.env` (and by
@@ -66,7 +72,7 @@ to Slack, so there is no public web address for the bot itself. This project add
 small **health-check endpoint** so a deployment still has something you can open in
 a browser:
 
-- Local: <http://localhost:3000>
+- Local: <http://localhost:3000> (set `PORT` in `.env` if 3000 is taken)
 - On Nest: reachable at your `https://<username>.hackclub.app` domain once you
   point it at the app's port.
 
