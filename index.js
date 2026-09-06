@@ -38,6 +38,16 @@ const app = new App({
 // Utility commands (ping/help) stay ephemeral.
 const inChannel = (text) => ({ response_type: "in_channel", text });
 
+// Log every incoming slash command so it's easy to see the bot working.
+app.use(async ({ body, next }) => {
+  if (body && body.command) {
+    const who = body.user_name ? `@${body.user_name}` : body.user_id;
+    const args = (body.text || "").trim();
+    console.log(`[cmd] ${body.command}${args ? ` ${args}` : ""}  (${who} in #${body.channel_name || body.channel_id})`);
+  }
+  await next();
+});
+
 // ---------------------------------------------------------------------------
 // Utility
 // ---------------------------------------------------------------------------
