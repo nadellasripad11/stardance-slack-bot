@@ -151,16 +151,28 @@ app.command(`/${PREFIX}-define`, async ({ command, ack, respond }) => {
     await respond({ text: `Usage: \`/${PREFIX}-define <word>\`` });
     return;
   }
+  const POS = { n: "noun", v: "verb", adj: "adjective", adv: "adverb", u: "" };
   try {
+    // Datamuse: fast, no API key. `md=d` adds definitions as "pos<TAB>text".
     const data = await httpGet(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`
+      `https://api.datamuse.com/words?sp=${encodeURIComponent(word)}&md=d&max=1`
     );
-    const meaning = data[0].meanings[0];
-    const def = meaning.definitions[0].definition;
-    await respond(inChannel(`:book: *${data[0].word}* _(${meaning.partOfSpeech})_\n${def}`));
+    const entry = data[0];
+    if (!entry || !entry.defs || entry.defs.length === 0) {
+      await respond({ text: `No definition found for "${word}".` });
+      return;
+    }
+    const lines = entry.defs.slice(0, 3).map((d) => {
+      const tab = d.indexOf("\t");
+      const pos = tab === -1 ? "" : d.slice(0, tab);
+      const text = (tab === -1 ? d : d.slice(tab + 1)).trim();
+      const label = POS[pos] !== undefined ? POS[pos] : pos;
+      return label ? `_(${label})_ ${text}` : text;
+    });
+    await respond(inChannel(`:book: *${entry.word}*\n${lines.join("\n")}`));
   } catch (err) {
     console.error("define failed:", err.message);
-    await respond({ text: `No definition found for "${word}".` });
+    await respond({ text: `Couldn't fetch a definition for "${word}".` });
   }
 });
 
