@@ -1,117 +1,82 @@
-# Stardance Slack Bot
+# stardance slack bot
 
-A Hack Club Slack bot built for the [Stardance "Make a Slack Bot" mission](https://stardance.hackclub.com/missions/slack-bot/guide).
-It listens for slash commands over **Socket Mode** (a WebSocket connection to Slack — no public URL required) and replies in the channel.
+my slack bot for the hack club [stardance "make a slack bot" mission](https://stardance.hackclub.com/missions/slack-bot/guide).
 
-## Commands
+it talks to slack over socket mode, which means it opens a websocket to slack instead of running a web server, so there's no public url to host. you just run the process and it stays connected. it answers slash commands, all prefixed with `sripin-` so they don't clash with the other bots in the hack club workspace.
 
-| Command | What it does |
+## commands
+
+| command | what it does |
 | --- | --- |
-| `/sripin-ping` | Replies with the bot's response latency and uptime |
-| `/sripin-help` | Lists every command |
-| `/sripin-catfact` | Random cat fact (`catfact.ninja`) |
-| `/sripin-joke` | Random joke (`official-joke-api.appspot.com`) |
-| `/sripin-quote` | Random inspirational quote (`zenquotes.io`, offline fallback) |
-| `/sripin-weather <place>` | Current weather (`wttr.in`, no API key) |
-| `/sripin-define <word>` | Dictionary definition (`dictionaryapi.dev`) |
-| `/sripin-8ball <question>` | Magic 8-ball answer (offline) |
-| `/sripin-roll [NdM]` | Roll dice, e.g. `/sripin-roll 2d6` (default `1d6`) |
-| `/sripin-flip` | Flip a coin (offline) |
-| `/sripin-choose a, b, c` | Pick one option at random (offline) |
-| `@mention` the bot | Replies with a friendly pointer to `/sripin-help` |
+| `/sripin-ping` | latency + how long the bot's been up |
+| `/sripin-help` | lists everything |
+| `/sripin-catfact` | random cat fact |
+| `/sripin-joke` | random joke |
+| `/sripin-quote` | random quote, has an offline fallback if the api is down |
+| `/sripin-weather london` | current weather, uses wttr.in, no api key needed |
+| `/sripin-define clever` | dictionary definition, uses the datamuse api |
+| `/sripin-8ball will this work` | magic 8-ball, works offline |
+| `/sripin-roll 2d6` | roll dice, defaults to 1d6 |
+| `/sripin-flip` | coin flip |
+| `/sripin-choose pizza, tacos, sushi` | picks one at random |
+| `@sripin bot` | mention it and it points you to `/sripin-help` |
 
-Fun commands reply **in-channel** (visible to everyone); `ping`/`help` reply only to you.
+the fun ones reply in the channel so everyone can see them. ping and help only reply to you.
 
-The bot also survives a busy port (the health check just disables itself), logs
-Bolt errors instead of crashing, and shuts down cleanly on `SIGINT`/`SIGTERM`
-(so `systemctl restart` is graceful).
+every command that hits an api has a timeout and a try/catch, so a dead api gives you a "try again" message instead of crashing the bot. it also shuts down cleanly on sigint/sigterm so a systemd restart doesn't leave anything hanging.
 
-> The `sripin-` prefix keeps these commands from colliding with other bots in the
-> Hack Club workspace. Change it by setting `COMMAND_PREFIX` in `.env` (and by
-> registering the matching command name in the Slack app dashboard).
+## running it locally
 
-## Tech stack
-
-- **Node.js** (>= 18)
-- **[@slack/bolt](https://slack.dev/bolt-js/)** with **Socket Mode**
-- **axios** for the API-backed commands
-- **dotenv** for local secrets
-
-## Local setup
+you need node 18 or newer.
 
 ```bash
 npm install
-cp .env.example .env   # then paste your real Slack tokens into .env
-npm start
 ```
 
-You should see:
-
-```
-health check on http://localhost:3000
-⚡️ bot is running!
-```
-
-Then run a slash command from any Slack channel you've invited the bot to (use
-`#bot-spam`, **not** `#stardance`).
-
-### Slack app configuration
-
-Create the app at <https://api.slack.com/apps> → **From scratch**, in the Hack Club workspace, then:
-
-1. **Socket Mode** → enable it.
-2. **Basic Information → App-Level Tokens** → generate a token with the `connections:write` scope (starts `xapp-`).
-3. **OAuth & Permissions → Bot Token Scopes** → add: `chat:write`, `commands`, `app_mentions:read`, `channels:history`.
-4. **Install App** → install to workspace → copy the **Bot User OAuth Token** (starts `xoxb-`).
-5. **Slash Commands** → create `/sripin-ping`, `/sripin-help`, `/sripin-catfact`, `/sripin-joke`.
-
-Put the two tokens in `.env`:
+then make a `.env` file with your slack tokens:
 
 ```
 SLACK_BOT_TOKEN=xoxb-...
 SLACK_APP_TOKEN=xapp-...
+COMMAND_PREFIX=sripin
+PORT=3737
 ```
-
-## The "demo URL"
-
-A Socket Mode bot is **not** a website — it makes an outbound WebSocket connection
-to Slack, so there is no public web address for the bot itself. This project adds a
-small **health-check endpoint** so a deployment still has something you can open in
-a browser:
-
-- Local: <http://localhost:3000> (set `PORT` in `.env` if 3000 is taken)
-- On Nest: reachable at your `https://<username>.hackclub.app` domain once you
-  point it at the app's port.
-
-It returns JSON like:
-
-```json
-{ "status": "ok", "bot": "stardance-slack-bot", "commands": ["/sripin-ping", "..."], "uptime_seconds": 42 }
-```
-
-The real demo is the bot replying to a slash command in Slack — capture that with a
-screenshot or short screen recording for your Stardance submission.
-
-## Deploy 24/7 on Nest
-
-See [`slackbot.service`](./slackbot.service). Summary:
 
 ```bash
-# on the Nest server, as root
+npm start
+```
+
+when it works you'll see `⚡️ bot is running!` and `now connected to slack`. then run a command in a channel you've invited the bot to (use `#bot-spam`, not `#stardance`).
+
+there's also a little health endpoint at `http://localhost:3737` that returns some json. socket mode doesn't need it, it's just handy for checking the process is alive, and if the port is taken it quietly disables itself instead of killing the bot.
+
+## the slack app
+
+the app config lives in [`manifest.json`](./manifest.json). at <https://api.slack.com/apps> pick "from a manifest", choose the hack club workspace, paste that file. it sets up all the slash commands, the bot scopes (`chat:write`, `commands`, `app_mentions:read`, `channels:history`), the `app_mention` event and socket mode in one go.
+
+then you still do two things by hand:
+
+1. basic information → app-level tokens → generate one with the `connections:write` scope, that's your `xapp-` token
+2. install app → install to workspace, then oauth & permissions has your `xoxb-` token
+
+## keeping it online 24/7
+
+the bot only runs while the process runs, so for the mission it needs to live on a server. this uses hack club nest. the systemd unit is in [`slackbot.service`](./slackbot.service) and there's a copy-paste setup in [`deploy-nest.sh`](./deploy-nest.sh). rough version:
+
+```bash
+# on nest, as root
 apt update && apt install -y git curl ca-certificates nano
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
 apt install -y nodejs
 git clone https://github.com/nadellasripad11/stardance-slack-bot
 cd stardance-slack-bot && npm install
-nano .env            # recreate the same SLACK_BOT_TOKEN / SLACK_APP_TOKEN
+nano .env            # same two tokens as local
 cp slackbot.service /etc/systemd/system/slackbot.service
 systemctl daemon-reload
 systemctl enable --now slackbot.service
-systemctl status slackbot.service
 journalctl -u slackbot.service -f
 ```
 
-## Time tracking
+## time tracking
 
-Coding time on this project is tracked with **Hackatime** (Hack Club's WakaTime-compatible
-service) via `~/.wakatime.cfg`. See [`DEVLOG.md`](./DEVLOG.md) for the work log.
+coding time on this is tracked with hackatime (hack club's wakatime-compatible thing) through `~/.wakatime.cfg`. the work log is in [`DEVLOG.md`](./DEVLOG.md).
