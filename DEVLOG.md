@@ -72,3 +72,16 @@
 ### Still to do
 - Re-sync manifest in the Slack app dashboard.
 - Deploy to Nest with the systemd service.
+
+## 2026-09-18 — Three more commands: fact, country, morse (17 total)
+
+- Added `/sripin-fact` — calls `uselessfacts.jsph.pl/api/v2/facts/random` (free, no
+  key) for a random interesting/weird-but-true fact. Falls back gracefully if the API
+  is down.
+- Added `/sripin-country <name>` — calls `restcountries.com/v3.1/name/<name>` (free,
+  no key) and surfaces the country's capital, region, population, languages, and
+  currency in a single compact line. Handles not-found errors with a helpful message.
+- Added `/sripin-morse <text>` — pure offline morse encoder. Covers A–Z, 0–9, and
+  common punctuation. Words are separated by `/` per ITU convention, unknown chars
+  become `?` without crashing.
+- Updated `COMMANDS` array (14 → 17), `manifest.json`, and `README.md`.

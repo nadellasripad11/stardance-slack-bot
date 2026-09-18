@@ -18,6 +18,9 @@ it talks to slack over socket mode, which means it opens a websocket to slack in
 | `/sripin-trivia` | random multiple-choice trivia question from open trivia db |
 | `/sripin-number 42` | an interesting fact about a number (or a random one) |
 | `/sripin-rps rock` | play rock-paper-scissors with the bot |
+| `/sripin-fact` | a random useless (but true) fact |
+| `/sripin-country japan` | quick facts about a country |
+| `/sripin-morse hello` | encode text in morse code (offline) |
 | `/sripin-8ball will this work` | magic 8-ball, works offline |
 | `/sripin-roll 2d6` | roll dice, defaults to 1d6 |
 | `/sripin-flip` | coin flip |

@@ -68,6 +68,9 @@ const COMMANDS = [
   ["trivia", "a random multiple-choice trivia question"],
   ["number [n]", "an interesting fact about a number, e.g. `42`"],
   ["rps rock|paper|scissors", "play rock-paper-scissors with the bot"],
+  ["fact", "a random useless (but true) fact"],
+  ["country <name>", "quick facts about a country, e.g. `japan`"],
+  ["morse <text>", "encode text in morse code (offline)"],
   ["8ball <question>", "ask the magic 8-ball"],
   ["roll [NdM]", "roll dice, e.g. `2d6`"],
   ["flip", "flip a coin"],
@@ -273,6 +276,82 @@ app.command(`/${PREFIX}-rps`, async ({ command, ack, respond }) => {
   else if (RPS_BEATS[player] === bot) result = "You win! 🎉";
   else result = "Bot wins! 🤖";
   await respond(inChannel(`${pe} vs ${be} — ${result}`));
+});
+
+// ---------------------------------------------------------------------------
+// Random fact (uselessfacts.jsph.pl — free, no key)
+// ---------------------------------------------------------------------------
+app.command(`/${PREFIX}-fact`, async ({ ack, respond }) => {
+  await ack();
+  try {
+    const data = await httpGet("https://uselessfacts.jsph.pl/api/v2/facts/random?language=en");
+    await respond(inChannel(`:bulb: ${data.text}`));
+  } catch (err) {
+    console.error("fact failed:", err.message);
+    await respond({ text: "Couldn't fetch a fact. Try again in a moment." });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Country info (restcountries.com — free, no key)
+// ---------------------------------------------------------------------------
+app.command(`/${PREFIX}-country`, async ({ command, ack, respond }) => {
+  await ack();
+  const name = (command.text || "").trim();
+  if (!name) {
+    await respond({ text: `Usage: \`/${PREFIX}-country <name>\` — e.g. \`/${PREFIX}-country japan\`` });
+    return;
+  }
+  try {
+    const data = await httpGet(
+      `https://restcountries.com/v3.1/name/${encodeURIComponent(name)}?fields=name,capital,region,population,languages,currencies,flag`
+    );
+    const c = data[0];
+    const capital = (c.capital || ["?"])[0];
+    const pop = c.population.toLocaleString("en-US");
+    const langs = Object.values(c.languages || {}).join(", ") || "?";
+    const currencies = Object.values(c.currencies || {})
+      .map((cur) => `${cur.name} (${cur.symbol || "?"})`)
+      .join(", ") || "?";
+    const text =
+      `${c.flag || ":earth_americas:"} *${c.name.common}* · ${c.region}\n` +
+      `Capital: ${capital} · Population: ${pop}\n` +
+      `Languages: ${langs}\n` +
+      `Currency: ${currencies}`;
+    await respond(inChannel(text));
+  } catch (err) {
+    console.error("country failed:", err.message);
+    await respond({ text: `Couldn't find info for "${name}". Check the spelling and try again.` });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Morse code encoder (offline — never fails)
+// ---------------------------------------------------------------------------
+const MORSE = {
+  A:".-", B:"-...", C:"-.-.", D:"-..", E:".", F:"..-.", G:"--.", H:"....",
+  I:"..", J:".---", K:"-.-", L:".-..", M:"--", N:"-.", O:"---", P:".--.",
+  Q:"--.-", R:".-.", S:"...", T:"-", U:"..-", V:"...-", W:".--", X:"-..-",
+  Y:"-.--", Z:"--..",
+  "0":"-----", "1":".----", "2":"..---", "3":"...--", "4":"....-",
+  "5":".....", "6":"-....", "7":"--...", "8":"---..", "9":"----.",
+  ".":".-.-.-", ",":"--..--", "?":"..--..", "!":"-.-.--", "/":"-..-.",
+  "-":"-....-", "'":".----.", "(":"-.--.", ")":"-.--.-",
+};
+
+app.command(`/${PREFIX}-morse`, async ({ command, ack, respond }) => {
+  await ack();
+  const text = (command.text || "").trim();
+  if (!text) {
+    await respond({ text: `Usage: \`/${PREFIX}-morse <text>\` — e.g. \`/${PREFIX}-morse hello world\`` });
+    return;
+  }
+  const encoded = text
+    .toUpperCase()
+    .split("")
+    .map((ch) => (ch === " " ? "/" : (MORSE[ch] || "?")))
+    .join(" ");
+  await respond(inChannel(`:radio: \`${text}\`\n\`${encoded}\``));
 });
 
 // ---------------------------------------------------------------------------
