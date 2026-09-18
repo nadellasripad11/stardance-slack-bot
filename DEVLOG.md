@@ -54,3 +54,21 @@
 - Re-sync `manifest.json` in the Slack dashboard (App Manifest → paste → Save) so
   all 11 commands register.
 - Deploy to Nest with the systemd service — required for "live 24/7".
+
+## 2026-09-17 — Three new commands: trivia, number facts, rock-paper-scissors
+
+- Added `/sripin-trivia` — fetches a random multiple-choice question from Open Trivia DB
+  (`opentdb.com/api.php?amount=1&type=multiple`). Shuffles the four options, labels them
+  with flag emoji (🇦–🇩), and hides the answer in a spoiler block (`||answer||`) so the
+  channel can guess before revealing. Added `decodeHtml` helper because opentdb returns
+  HTML entities in question text.
+- Added `/sripin-number [n]` — calls `numbersapi.com/<n>` (or `/random` if no number
+  given) to return an interesting math fact. Pure text response, no API key.
+- Added `/sripin-rps rock|paper|scissors` — offline rock-paper-scissors. Bot picks at
+  random and reports win/lose/tie with emoji.
+- Updated `COMMANDS` array (now 14 entries), `manifest.json` (three new slash command
+  entries), and `README.md` command table.
+
+### Still to do
+- Re-sync manifest in the Slack app dashboard.
+- Deploy to Nest with the systemd service.

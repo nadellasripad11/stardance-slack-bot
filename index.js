@@ -65,6 +65,9 @@ const COMMANDS = [
   ["quote", "a random inspirational quote"],
   ["weather <place>", "current weather, e.g. `london`"],
   ["define <word>", "dictionary definition"],
+  ["trivia", "a random multiple-choice trivia question"],
+  ["number [n]", "an interesting fact about a number, e.g. `42`"],
+  ["rps rock|paper|scissors", "play rock-paper-scissors with the bot"],
   ["8ball <question>", "ask the magic 8-ball"],
   ["roll [NdM]", "roll dice, e.g. `2d6`"],
   ["flip", "flip a coin"],
@@ -174,6 +177,102 @@ app.command(`/${PREFIX}-define`, async ({ command, ack, respond }) => {
     console.error("define failed:", err.message);
     await respond({ text: `Couldn't fetch a definition for "${word}".` });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Trivia (Open Trivia DB — free, no key)
+// ---------------------------------------------------------------------------
+
+// opentdb encodes special chars as HTML entities; decode the common ones.
+function decodeHtml(str) {
+  return String(str)
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&ldquo;/g, "“")
+    .replace(/&rdquo;/g, "”")
+    .replace(/&lsquo;/g, "‘")
+    .replace(/&rsquo;/g, "’")
+    .replace(/&ndash;/g, "–")
+    .replace(/&mdash;/g, "—")
+    .replace(/&deg;/g, "°");
+}
+
+// Shuffle an array in place (Fisher-Yates).
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+app.command(`/${PREFIX}-trivia`, async ({ ack, respond }) => {
+  await ack();
+  try {
+    const data = await httpGet("https://opentdb.com/api.php?amount=1&type=multiple");
+    if (!data.results || data.results.length === 0) throw new Error("empty response");
+    const q = data.results[0];
+    const question = decodeHtml(q.question);
+    const correct = decodeHtml(q.correct_answer);
+    const options = shuffle([correct, ...q.incorrect_answers.map(decodeHtml)]);
+    const labels = ["🇦", "🇧", "🇨", "🇩"];
+    const optionLines = options.map((opt, i) => `${labels[i]} ${opt}`).join("\n");
+    const correctLabel = labels[options.indexOf(correct)];
+    const diff = q.difficulty.charAt(0).toUpperCase() + q.difficulty.slice(1);
+    const text =
+      `:brain: *Trivia* · _${decodeHtml(q.category)}_ · ${diff}\n\n` +
+      `*${question}*\n\n${optionLines}\n\n||${correctLabel} ${correct}||`;
+    await respond(inChannel(text));
+  } catch (err) {
+    console.error("trivia failed:", err.message);
+    await respond({ text: "Couldn't fetch a trivia question. Try again in a moment." });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Number facts (numbersapi.com — free, no key)
+// ---------------------------------------------------------------------------
+app.command(`/${PREFIX}-number`, async ({ command, ack, respond }) => {
+  await ack();
+  const arg = (command.text || "").trim();
+  const target = /^\d+$/.test(arg) ? arg : "random";
+  try {
+    const fact = await httpGet(`http://numbersapi.com/${target}`, {
+      responseType: "text",
+      headers: { "User-Agent": "curl" },
+    });
+    await respond(inChannel(`:1234: ${String(fact).trim()}`));
+  } catch (err) {
+    console.error("number failed:", err.message);
+    await respond({ text: "Couldn't fetch a number fact. Try again in a moment." });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Rock-paper-scissors (offline)
+// ---------------------------------------------------------------------------
+const RPS_CHOICES = ["rock", "paper", "scissors"];
+const RPS_EMOJI = { rock: ":rock:", paper: ":page_facing_up:", scissors: ":scissors:" };
+const RPS_BEATS = { rock: "scissors", paper: "rock", scissors: "paper" };
+
+app.command(`/${PREFIX}-rps`, async ({ command, ack, respond }) => {
+  await ack();
+  const player = (command.text || "").trim().toLowerCase();
+  if (!RPS_CHOICES.includes(player)) {
+    await respond({ text: `Usage: \`/${PREFIX}-rps rock|paper|scissors\`` });
+    return;
+  }
+  const bot = RPS_CHOICES[Math.floor(Math.random() * 3)];
+  const pe = RPS_EMOJI[player];
+  const be = RPS_EMOJI[bot];
+  let result;
+  if (player === bot) result = "It's a tie! 🤝";
+  else if (RPS_BEATS[player] === bot) result = "You win! 🎉";
+  else result = "Bot wins! 🤖";
+  await respond(inChannel(`${pe} vs ${be} — ${result}`));
 });
 
 // ---------------------------------------------------------------------------

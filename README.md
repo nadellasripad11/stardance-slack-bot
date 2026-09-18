@@ -15,6 +15,9 @@ it talks to slack over socket mode, which means it opens a websocket to slack in
 | `/sripin-quote` | random quote, has an offline fallback if the api is down |
 | `/sripin-weather london` | current weather, uses wttr.in, no api key needed |
 | `/sripin-define clever` | dictionary definition, uses the datamuse api |
+| `/sripin-trivia` | random multiple-choice trivia question from open trivia db |
+| `/sripin-number 42` | an interesting fact about a number (or a random one) |
+| `/sripin-rps rock` | play rock-paper-scissors with the bot |
 | `/sripin-8ball will this work` | magic 8-ball, works offline |
 | `/sripin-roll 2d6` | roll dice, defaults to 1d6 |
 | `/sripin-flip` | coin flip |
